@@ -1,7 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:maimaimai/ccc.dart';
+import 'package:maimaimai/capture_page.dart';
 import 'package:maimaimai/data_store.dart';
 import 'package:maimaimai/home_page.dart';
 import 'package:maimaimai/luru.dart';
@@ -16,12 +16,11 @@ Future<void> main() async {
   objectBox = await DataStore.create();
   cameras = await availableCameras();
 
-  // runApp(const MyApp());
-  runApp(const CameraApp());
+  runApp(const MaiMaiMaiApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MaiMaiMaiApp extends StatelessWidget {
+  const MaiMaiMaiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +44,10 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: '/mai',
           page: () => const Mai(),
+        ),
+        GetPage(
+          name: '/capture',
+          page: () => const CapturePage(),
         ),
       ],
       home: const HomePage(title: '卖卖卖'),

@@ -1,5 +1,4 @@
 import 'package:barcode_scan2/barcode_scan2.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -48,16 +47,6 @@ class HomePage extends StatelessWidget {
                 ),
                 child: OutlinedButton(
                   onPressed: () async {
-                    if (kDebugMode) {
-                      Get.toNamed(
-                        'luru',
-                        parameters: {
-                          'barCode': '6923450657935',
-                        },
-                      );
-                      return;
-                    }
-
                     final result = await BarcodeScanner.scan();
                     if (result.rawContent.isEmpty) {
                       return;

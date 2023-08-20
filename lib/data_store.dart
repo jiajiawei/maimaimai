@@ -2,6 +2,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'objectbox.g.dart';
 
+String docsDir = '';
+
 class DataStore {
   late final Store store;
 
@@ -10,9 +12,8 @@ class DataStore {
   }
 
   static Future<DataStore> create() async {
-    final docsDir = await getApplicationDocumentsDirectory();
-    final store =
-        await openStore(directory: p.join(docsDir.path, "obx-example"));
+    docsDir = (await getApplicationDocumentsDirectory()).path;
+    final store = await openStore(directory: p.join(docsDir, "obx-example"));
     return DataStore._create(store);
   }
 }

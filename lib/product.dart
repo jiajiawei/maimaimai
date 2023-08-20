@@ -10,5 +10,7 @@ class Product {
 
   double price = -1;
 
+  String imageFileName = '';
+
   Product(this.barCode);
 }

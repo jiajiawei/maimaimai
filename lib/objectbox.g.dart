@@ -22,7 +22,7 @@ final _entities = <ModelEntity>[
   ModelEntity(
       id: const IdUid(2, 7650970662846143878),
       name: 'Product',
-      lastPropertyId: const IdUid(3, 2269529834728566259),
+      lastPropertyId: const IdUid(4, 4106932662005668323),
       flags: 0,
       properties: <ModelProperty>[
         ModelProperty(
@@ -40,6 +40,11 @@ final _entities = <ModelEntity>[
             id: const IdUid(3, 2269529834728566259),
             name: 'price',
             type: 8,
+            flags: 0),
+        ModelProperty(
+            id: const IdUid(4, 4106932662005668323),
+            name: 'imageFileName',
+            type: 9,
             flags: 0)
       ],
       relations: <ModelRelation>[],
@@ -96,10 +101,12 @@ ModelDefinition getObjectBoxModel() {
         },
         objectToFB: (Product object, fb.Builder fbb) {
           final barCodeOffset = fbb.writeString(object.barCode);
-          fbb.startTable(4);
+          final imageFileNameOffset = fbb.writeString(object.imageFileName);
+          fbb.startTable(5);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, barCodeOffset);
           fbb.addFloat64(2, object.price);
+          fbb.addOffset(3, imageFileNameOffset);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -111,7 +118,9 @@ ModelDefinition getObjectBoxModel() {
           final object = Product(barCodeParam)
             ..id = const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0)
             ..price =
-                const fb.Float64Reader().vTableGet(buffer, rootOffset, 8, 0);
+                const fb.Float64Reader().vTableGet(buffer, rootOffset, 8, 0)
+            ..imageFileName = const fb.StringReader(asciiOptimization: true)
+                .vTableGet(buffer, rootOffset, 10, '');
 
           return object;
         })
@@ -131,4 +140,8 @@ class Product_ {
 
   /// see [Product.price]
   static final price = QueryDoubleProperty<Product>(_entities[0].properties[2]);
+
+  /// see [Product.imageFileName]
+  static final imageFileName =
+      QueryStringProperty<Product>(_entities[0].properties[3]);
 }

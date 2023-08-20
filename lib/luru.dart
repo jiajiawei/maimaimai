@@ -1,11 +1,15 @@
+import 'dart:io';
+
 import 'package:barcode_scan2/barcode_scan2.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:maimaimai/main.dart';
 import 'package:maimaimai/objectbox.g.dart';
 import 'package:maimaimai/product.dart';
+import 'package:path/path.dart' as path;
+
+import 'data_store.dart';
 
 class Luru extends StatefulWidget {
   const Luru({super.key});
@@ -15,9 +19,9 @@ class Luru extends StatefulWidget {
 }
 
 class _LuruState extends State<Luru> {
-  bool create = true;
   String barCode = '';
   int productId = 0;
+  RxString imageFileName = ''.obs;
   TextEditingController priceController = TextEditingController();
 
   @override
@@ -35,7 +39,7 @@ class _LuruState extends State<Luru> {
     if (product != null) {
       productId = product.id;
       priceController.text = product.price.toString();
-      
+      imageFileName.value = product.imageFileName;
     }
   }
 
@@ -109,10 +113,24 @@ class _LuruState extends State<Luru> {
                     const SizedBox(
                       width: 20,
                     ),
-                    Container(
-                      width: 200,
-                      height: 200,
-                      color: Colors.blue[200],
+                    InkWell(
+                      onTap: handleCapture,
+                      child: SizedBox(
+                        width: 200,
+                        height: 200,
+                        child: Obx(
+                          () => imageFileName.isEmpty
+                              ? const Icon(Icons.image_not_supported_outlined)
+                              : Image.file(
+                                  File(
+                                    path.join(
+                                      docsDir,
+                                      imageFileName.value,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -134,38 +152,35 @@ class _LuruState extends State<Luru> {
     );
   }
 
-  handleSave() async {
-    final box = objectBox.store.box<Product>();
-    if (create) {
-      final newProduct = Product(barCode)
-        ..price = double.parse(priceController.text);
-      await box.putAsync(newProduct);
-    } else {
-      final newProduct = Product(barCode)
-        ..id = productId
-        ..price = double.parse(priceController.text);
-      await box.putAsync(newProduct);
+  handleCapture() async {
+    final data = await Get.toNamed('/capture');
+    if (data != null && data is String) {
+      imageFileName.value = data;
     }
   }
 
-  handleReadd() async {
-    if (kDebugMode) {
-      Get.offAndToNamed(
-        'luru',
-        parameters: {
-          'barCode': '6923450657936',
-        },
-      );
-      return;
-    }
+  saveProduct() async {
+    final box = objectBox.store.box<Product>();
+    final newProduct = Product(barCode)
+      ..id = productId
+      ..price = double.parse(priceController.text)
+      ..imageFileName = imageFileName.value;
+    await box.putAsync(newProduct);
+  }
 
-    await handleSave();
+  handleSave() async {
+    await saveProduct();
+    Get.offAllNamed('/');
+  }
+
+  handleReadd() async {
+    await saveProduct();
     final result = await BarcodeScanner.scan();
     if (result.rawContent.isEmpty) {
       return;
     }
-    Get.toNamed(
-      'luru',
+    Get.offAndToNamed(
+      '/luru',
       parameters: {
         'barCode': result.rawContent,
       },

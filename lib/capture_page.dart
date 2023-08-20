@@ -3,31 +3,32 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:maimaimai/main.dart';
+import 'package:path/path.dart' as path;
 
-/// Camera example home widget.
-class CameraExampleHome extends StatefulWidget {
+import 'data_store.dart';
+
+class CapturePage extends StatefulWidget {
   /// Default Constructor
-  const CameraExampleHome({super.key});
+  const CapturePage({super.key});
 
   @override
-  State<CameraExampleHome> createState() {
-    return _CameraExampleHomeState();
+  State<CapturePage> createState() {
+    return _CapturePageState();
   }
 }
 
-void _logError(String code, String? message) {
+void logError(String code, String? message) {
   // ignore: avoid_print
   print('Error: $code${message == null ? '' : '\nError Message: $message'}');
 }
 
-class _CameraExampleHomeState extends State<CameraExampleHome>
+class _CapturePageState extends State<CapturePage>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   CameraController? controller;
   XFile? imageFile;
@@ -66,7 +67,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     if (state == AppLifecycleState.inactive) {
       cameraController.dispose();
     } else if (state == AppLifecycleState.resumed) {
-      _initializeCameraController(cameraController.description);
+      _initializeCameraController();
     }
   }
   // #enddocregion AppLifecycle
@@ -100,14 +101,6 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
             ),
           ),
           _captureControlRowWidget(),
-          Padding(
-            padding: const EdgeInsets.all(5.0),
-            child: Row(
-              children: <Widget>[
-                _thumbnailWidget(),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -115,22 +108,36 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
 
   /// Display the preview from the camera (or a message if the preview is not available).
   Widget _cameraPreviewWidget() {
-    return Listener(
-      onPointerDown: (_) => _pointers++,
-      onPointerUp: (_) => _pointers--,
-      child: CameraPreview(
-        controller!,
-        child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onScaleStart: _handleScaleStart,
-            onScaleUpdate: _handleScaleUpdate,
-            onTapDown: (TapDownDetails details) =>
-                onViewFinderTap(details, constraints),
+    return FutureBuilder(
+      future: _initializeCameraController(),
+      builder: (context, snapshot) {
+        final CameraController? cameraController = controller;
+
+        // App state changed before we got the chance to initialize.
+        if (cameraController == null || !cameraController.value.isInitialized) {
+          return const Center(
+            child: CircularProgressIndicator(),
           );
-        }),
-      ),
+        }
+
+        return Listener(
+          onPointerDown: (_) => _pointers++,
+          onPointerUp: (_) => _pointers--,
+          child: CameraPreview(
+            controller!,
+            child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onScaleStart: _handleScaleStart,
+                onScaleUpdate: _handleScaleUpdate,
+                onTapDown: (TapDownDetails details) =>
+                    onViewFinderTap(details, constraints),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 
@@ -150,51 +157,15 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     await controller!.setZoomLevel(_currentScale);
   }
 
-  /// Display the thumbnail of the captured image or video.
-  Widget _thumbnailWidget() {
-    return Expanded(
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (imageFile == null)
-              Container()
-            else
-              SizedBox(
-                width: 64.0,
-                height: 64.0,
-                child:
-                    // The captured image on the web contains a network-accessible URL
-                    // pointing to a location within the browser. It may be displayed
-                    // either with Image.network or Image.memory after loading the image
-                    // bytes to memory.
-                    kIsWeb
-                        ? Image.network(imageFile!.path)
-                        : Image.file(File(imageFile!.path)),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Display the control bar with buttons to take pictures and record videos.
   Widget _captureControlRowWidget() {
-    final CameraController? cameraController = controller;
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: <Widget>[
         IconButton(
-          icon: const Icon(Icons.camera_alt),
-          color: Colors.blue,
-          onPressed: cameraController != null &&
-                  cameraController.value.isInitialized &&
-                  !cameraController.value.isRecordingVideo
-              ? onTakePictureButtonPressed
-              : null,
-        ),
+            icon: const Icon(Icons.camera_alt),
+            color: Colors.blue,
+            onPressed: onTakePictureButtonPressed),
       ],
     );
   }
@@ -219,27 +190,15 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
     cameraController.setFocusPoint(offset);
   }
 
-  Future<void> _initializeCameraController(
-      CameraDescription cameraDescription) async {
+  Future<void> _initializeCameraController() async {
     final CameraController cameraController = CameraController(
-      cameraDescription,
+      cameras.first,
       kIsWeb ? ResolutionPreset.max : ResolutionPreset.medium,
       enableAudio: enableAudio,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
 
     controller = cameraController;
-
-    // If the controller is updated then update the UI.
-    cameraController.addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
-      if (cameraController.value.hasError) {
-        showInSnackBar(
-            'Camera error ${cameraController.value.errorDescription}');
-      }
-    });
 
     try {
       await cameraController.initialize();
@@ -285,23 +244,16 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
           break;
       }
     }
-
-    if (mounted) {
-      setState(() {});
-    }
   }
 
-  void onTakePictureButtonPressed() {
-    takePicture().then((XFile? file) {
-      if (mounted) {
-        setState(() {
-          imageFile = file;
-        });
-        if (file != null) {
-          showInSnackBar('Picture saved to ${file.path}');
-        }
-      }
-    });
+  Future<void> onTakePictureButtonPressed() async {
+    final file = await takePicture();
+    if (file != null) {
+      final toSavePath = path.join(docsDir, file.name);
+      // showInSnackBar('Picture saved to $toSavePath');
+      await file.saveTo(toSavePath);
+      Get.back(result: toSavePath);
+    }
   }
 
   Future<XFile?> takePicture() async {
@@ -326,20 +278,7 @@ class _CameraExampleHomeState extends State<CameraExampleHome>
   }
 
   void _showCameraException(CameraException e) {
-    _logError(e.code, e.description);
+    logError(e.code, e.description);
     showInSnackBar('Error: ${e.code}\n${e.description}');
-  }
-}
-
-/// CameraApp is the Main Application.
-class CameraApp extends StatelessWidget {
-  /// Default Constructor
-  const CameraApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: CameraExampleHome(),
-    );
   }
 }
