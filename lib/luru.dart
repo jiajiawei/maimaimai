@@ -94,7 +94,7 @@ class _LuruState extends State<Luru> {
                       child: TextField(
                         keyboardType: TextInputType.number,
                         inputFormatters: <TextInputFormatter>[
-                          FilteringTextInputFormatter.digitsOnly
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9\.]'))
                         ],
                         controller: priceController,
                       ),
